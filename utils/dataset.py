@@ -114,6 +114,8 @@ class KmerDataset(torch.utils.data.Dataset): # asssuming train data
         train_seqs = df['sequence'].values  # 4_500_000  sequences 
         # SEQUENCE LENGTHS ANALYSIS:  Max = 299, Min = 100, Mean = 183.03 
 
+        self.alphabet_size = 26
+        self.num_cls = 1
         self.k = k
         regular_data = [] 
         for seq in train_seqs: 
