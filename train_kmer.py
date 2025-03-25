@@ -18,6 +18,11 @@ if args.wandb:
         config=args,
     )
 
+try:
+    anon_login = os.getlogin() == 'anonymized'
+except OSError:
+    anon_login = False
+
 trainer = pl.Trainer(
     default_root_dir=os.environ["MODEL_DIR"],
     accelerator="gpu" if torch.cuda.is_available() else 'auto',
@@ -26,7 +31,7 @@ trainer = pl.Trainer(
     num_sanity_val_steps=0,
     limit_train_batches=args.limit_train_batches,
     limit_val_batches=args.limit_val_batches,
-    enable_progress_bar=not (args.wandb or args.no_tqdm) or os.getlogin() == 'anonymized',
+    enable_progress_bar=not (args.wandb or args.no_tqdm) or anon_login,
     gradient_clip_val=args.grad_clip,
     callbacks=[
         ModelCheckpoint(
