@@ -9,6 +9,7 @@ class MLPModel(nn.Module):
     def __init__(self, args, alphabet_size, num_cls, classifier=False):
         super().__init__()
         self.alphabet_size = alphabet_size
+        self.args = args
         self.classifier = classifier
         self.num_cls = num_cls
 

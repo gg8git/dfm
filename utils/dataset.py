@@ -114,7 +114,7 @@ class KmerDataset(torch.utils.data.Dataset): # asssuming train data
         train_seqs = df['sequence'].values  # 4_500_000  sequences 
         # SEQUENCE LENGTHS ANALYSIS:  Max = 299, Min = 100, Mean = 183.03 
 
-        self.alphabet_size = 26
+        self.alphabet_size = 27 # 27/28 depending on padding
         self.num_cls = 1
         self.k = k
         regular_data = [] 
@@ -216,8 +216,8 @@ def collate_fn(data):
     max_size = max([x.shape[-1] for x in data])
     batch_x = torch.vstack(
         # Pad with stop token
-        [torch.nn.functional.pad(x, (0, max_size - x.shape[-1]), value=1) for x in data]
+        [torch.nn.functional.pad(x, (0, max_size - x.shape[-1]), value=1) for x in data] # value=0/1
     )
-    return batch_x - 1, torch.zeros(batch_x.shape[0], dtype=torch.int64)
+    return batch_x - 1, torch.zeros(batch_x.shape[0], dtype=torch.int64) # batch_x - 0/1
 
     

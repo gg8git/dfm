@@ -66,6 +66,9 @@ class KmerModule(GeneralModule):
         self.iter_step += 1
         seq, cls = batch
         B, L = seq.shape
+        if seq.min().item() < 0 or seq.max().item() > self.model.alphabet_size:
+            import ipdb; ipdb.set_trace()
+            print("bounds error")
 
         xt, alphas = sample_cond_prob_path(self.args, seq, self.model.alphabet_size)
         if self.args.mode == 'distill':
@@ -301,6 +304,7 @@ class KmerModule(GeneralModule):
             print("Warning: there were this many nans in the probs_cond of the classifier score: ", torch.isnan(p_x0_given_xt_y).sum(), "We are setting them to 0.")
             p_x0_given_xt_y = torch.nan_to_num(p_x0_given_xt_y)
         return p_x0_given_xt_y, cls_score
+    
     def get_cls_score(self, xt, alpha):
         with torch.enable_grad():
             xt_ = xt.clone().detach().requires_grad_(True)
@@ -408,7 +412,7 @@ class KmerModule(GeneralModule):
                     mean_log.update({'val_fxd_generated_to_targetclsseqs_allTrainSet': get_wasserstein_dist(embeds_gen, embeds_cls_specific)})
             clss = torch.cat(self.val_outputs['clss_cleancls']).squeeze().detach().cpu().numpy()
             embeds = torch.cat(self.val_outputs['embeddings_cleancls']).detach().cpu().numpy()
-            embeds_rand = torch.randint(0,4, size=embeds_gen.shape).numpy()
+            embeds_rand = torch.randint(0,4, size=embeds_gen.shape).numpy() # why 4
             mean_log.update({'val_fxd_randseq_to_allseqs': get_wasserstein_dist(embeds_rand, embeds)})
             mean_log.update({'val_fxd_generated_to_allseqs': get_wasserstein_dist(embeds_gen, embeds)})
             if not self.args.target_class == self.model.num_cls:
