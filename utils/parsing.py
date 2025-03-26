@@ -90,7 +90,7 @@ def parse_train_args():
     parser.add_argument("--dropout", type=float, default=0.0)
     parser.add_argument("--num_cnn_stacks", type=int, default=1)
     parser.add_argument("--num_layers", type=int, default=1)
-    parser.add_argument("--hidden_dim", type=float, default=128)
+    parser.add_argument("--hidden_dim", type=int, default=128)
     parser.add_argument("--self_condition_ratio", type=float, default=0)
     parser.add_argument("--prior_self_condition", action="store_true")
     parser.add_argument("--no_token_dropout", action="store_true")
