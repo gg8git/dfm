@@ -61,7 +61,7 @@ elif args.dataset_type == 'enhancer':
     toy_data = None
 
 if args.dataset_type == 'kmers':
-    dm = KmerDataModule(batch_size=512, k=1, version=1) # can incorporate args
+    dm = KmerDataModule(batch_size=args.batch_size, k=1, version=1) # can incorporate args
     train_loader = dm.train_dataloader()
     val_loader = dm.val_dataloader() if not args.validate_on_test else dm.test_dataloader()
     toy_data = None

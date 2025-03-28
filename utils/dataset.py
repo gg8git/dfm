@@ -114,7 +114,7 @@ class KmerDataset(torch.utils.data.Dataset): # asssuming train data
         train_seqs = df['sequence'].values  # 4_500_000  sequences 
         # SEQUENCE LENGTHS ANALYSIS:  Max = 299, Min = 100, Mean = 183.03 
 
-        self.alphabet_size = 27 # 27/28 depending on padding
+        self.alphabet_size = 22 # 27/28 depending on padding
         self.num_cls = 1
         self.k = k
         regular_data = [] 
@@ -136,6 +136,10 @@ class KmerDataset(torch.utils.data.Dataset): # asssuming train data
             self.vocab2idx = { v:i for i, v in enumerate(self.vocab) }
         else:
             self.vocab2idx = vocab2idx
+        
+        # map irrelevant tokens to pad (?) token
+        for c in "BOUXZ":
+            self.vocab2idx[c] = self.vocab2idx['-']
         
         self.data = []
         if load_data:
