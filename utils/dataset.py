@@ -144,7 +144,7 @@ class KmerDataset(torch.utils.data.Dataset): # asssuming train data
         
         # map irrelevant tokens to pad (?) token
         for c in "BOUXZ":
-            self.vocab2idx[c] = self.vocab2idx['-']
+            self.vocab2idx[c] = self.vocab2idx['<stop>']
         
         self.data = []
         if load_data:
