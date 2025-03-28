@@ -125,6 +125,11 @@ class KmerDataset(torch.utils.data.Dataset): # asssuming train data
         if vocab is None:
             self.regular_vocab = set((token for seq in regular_data for token in seq))  # 21 tokens 
             self.regular_vocab.discard(".") 
+            self.regular_vocab.discard("B") 
+            self.regular_vocab.discard("O") 
+            self.regular_vocab.discard("U") 
+            self.regular_vocab.discard("X") 
+            self.regular_vocab.discard("Z") 
             if '-' not in self.regular_vocab: 
                 self.regular_vocab.add('-')  # '-' used as pad token when length of sequence is not a multiple of k
             self.vocab = ["".join(kmer) for kmer in itertools.product(self.regular_vocab, repeat=k)] # 21**k tokens 
