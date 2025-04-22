@@ -1,6 +1,6 @@
 from torch.utils.data import WeightedRandomSampler, Subset
 
-from lightning_modules.kmer_module import KmerModule
+from lightning_modules.kmer_module_cls import KmerModuleCls
 from utils.dataset import ToyDataset, TwoClassOverfitDataset, EnhancerDataset, KmerDataModule
 from utils.parsing import parse_train_args
 args = parse_train_args()
@@ -81,7 +81,7 @@ else:
         train_loader = torch.utils.data.DataLoader(train_ds, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=args.dataset_type == 'enhancer')
     val_loader = torch.utils.data.DataLoader(val_ds, batch_size=args.batch_size, num_workers=args.num_workers)
 
-model = KmerModule(args, dm.train.alphabet_size, toy_data)
+model = KmerModuleCls(args, dm.train.alphabet_size, dm.train.num_cls, toy_data)
 
 if args.validate:
     trainer.validate(model, train_loader if args.validate_on_train else val_loader, ckpt_path=args.ckpt)

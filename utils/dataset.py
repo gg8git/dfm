@@ -96,13 +96,13 @@ class KmerDataModule(pl.LightningDataModule):
         self.test   = DatasetClass(dataset='test', k=k, vocab=self.train.vocab, vocab2idx=self.train.vocab2idx, load_data=load_data )
     
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(self.train, batch_size=self.batch_size, pin_memory=True, shuffle=True, collate_fn=collate_fn, num_workers=10)
+        return torch.utils.data.DataLoader(self.train, batch_size=self.batch_size, pin_memory=True, shuffle=True, collate_fn=kmer_collate_fn, num_workers=10)
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.val,   batch_size=self.batch_size, pin_memory=True, shuffle=False, collate_fn=collate_fn, num_workers=10)
+        return torch.utils.data.DataLoader(self.val,   batch_size=self.batch_size, pin_memory=True, shuffle=False, collate_fn=kmer_collate_fn, num_workers=10)
     
     def test_dataloader(self):
-        return torch.utils.data.DataLoader(self.test,   batch_size=self.batch_size, pin_memory=True, shuffle=False, collate_fn=collate_fn, num_workers=10)
+        return torch.utils.data.DataLoader(self.test,   batch_size=self.batch_size, pin_memory=True, shuffle=False, collate_fn=kmer_collate_fn, num_workers=10)
 
 
 class KmerDataset(torch.utils.data.Dataset): # asssuming train data 
@@ -220,7 +220,7 @@ class KmerDataset(torch.utils.data.Dataset): # asssuming train data
         return len(self.vocab)
 
 
-def collate_fn(data):
+def kmer_collate_fn(data):
     # Length of longest peptide in batch 
     max_size = max([x.shape[-1] for x in data])
     batch_x = torch.vstack(
@@ -229,4 +229,114 @@ def collate_fn(data):
     )
     return batch_x - 1, torch.zeros(batch_x.shape[0], dtype=torch.int64) # batch_x - 0/1
 
+
+class MoleculeDataModule(pl.LightningDataModule):
+    def __init__(self, batch_size, k, version=1, load_data=True ): 
+        super().__init__() 
+        self.batch_size = batch_size 
+
+        self.full_dataset = MoleculeDataset('../cfm/data/guacamol_v1_train.selfies', max_length=128)
+        self.full_dataset.save_vocabulary('./workdir/molecule-dfm')
+        val_size = min(10000, len(self.full_dataset) // 10)  # Ensure val set is at most 10% of data
+        train_size = len(self.full_dataset) - val_size
+        train_dataset, val_dataset = torch.utils.data.random_split(self.full_dataset, [train_size, val_size])
+        
+        self.train  = train_dataset
+        self.val    = val_dataset
+        self.test   = val_dataset
     
+    def train_dataloader(self):
+        return torch.utils.data.DataLoader(self.train, batch_size=self.batch_size, pin_memory=True, shuffle=True, num_workers=10, drop_last=True)
+
+    def val_dataloader(self):
+        return torch.utils.data.DataLoader(self.val,   batch_size=self.batch_size, pin_memory=True, shuffle=False, num_workers=10, drop_last=True)
+    
+    def test_dataloader(self):
+        return torch.utils.data.DataLoader(self.test,   batch_size=self.batch_size, pin_memory=True, shuffle=False, num_workers=10, drop_last=True)
+
+import re
+SELFIES_PATTERN = r'\[[^\]]*\]'
+STOP_TOKEN = "[STOP]"  # Custom stop token for SELFIES
+
+class MoleculeDataset(torch.utils.data.Dataset):
+    def __init__(self, file_path, max_length=200, stop_token=STOP_TOKEN):
+        """
+        Dataset for SELFIES molecular representations.
+        
+        Args:
+            file_path: Path to file containing SELFIES strings (one per line)
+            max_length: Maximum number of tokens in a sequence
+            stop_token: Token used to mark the end of a sequence
+        """
+        self.max_length = max_length
+        self.stop_token = stop_token
+        
+        # Load SELFIES strings from file
+        with open(file_path, 'r') as f:
+            self.selfies_strings = [line.strip() for line in f]
+        
+        print(f"Loaded {len(self.selfies_strings)} SELFIES strings from {file_path}")
+        print(f"Example SELFIES: {self.selfies_strings[0]}")
+        
+        # Build vocabulary from all SELFIES strings
+        self.build_vocabulary()
+        
+    def build_vocabulary(self):
+        """Build vocabulary from all SELFIES strings in the dataset."""
+        # Find all unique tokens across all SELFIES strings
+        all_tokens = set()
+        for selfies in self.selfies_strings:
+            tokens = re.findall(SELFIES_PATTERN, selfies)
+            all_tokens.update(tokens)
+        
+        # Add stop token
+        all_tokens.add(self.stop_token)
+        
+        # Sort tokens to ensure consistent ordering
+        all_tokens = sorted(list(all_tokens))
+        
+        # Create mapping dictionaries
+        self.token_to_idx = {token: idx for idx, token in enumerate(all_tokens)}
+        self.idx_to_token = {idx: token for idx, token in enumerate(all_tokens)}
+        self.vocab_size = len(all_tokens)
+        self.alphabet_size = self.vocab_size
+        
+        print(f"Vocabulary built with {self.vocab_size} unique tokens")
+        print(f"First 10 tokens: {list(all_tokens)[:10]}")
+        
+    def save_vocabulary(self, vocab_path):
+        """Save vocabulary to file for later use."""
+        vocab_data = {
+            'token_to_idx': self.token_to_idx,
+            'idx_to_token': self.idx_to_token,
+            'vocab_size': self.vocab_size
+        }
+        
+        with open(vocab_path, 'wb') as f:
+            pickle.dump(vocab_data, f)
+        
+        print(f"Vocabulary saved to {vocab_path}")
+    
+    def __len__(self):
+        return len(self.selfies_strings)
+    
+    def __getitem__(self, idx):
+        selfies = self.selfies_strings[idx]
+        
+        # Tokenize SELFIES string
+        tokens = re.findall(SELFIES_PATTERN, selfies)
+        
+        # Truncate if needed
+        if len(tokens) > self.max_length - 1:  # Leave room for at least one stop token
+            tokens = tokens[:self.max_length-1]
+        
+        # Convert to indices
+        indices = [self.token_to_idx[token] for token in tokens]
+        
+        # Add stop token
+        indices.append(self.token_to_idx[self.stop_token])
+        
+        # Pad with stop tokens to fixed length
+        indices += [self.token_to_idx[self.stop_token]] * (self.max_length - len(indices))
+        
+        return torch.tensor(indices)

@@ -1,7 +1,7 @@
 from torch.utils.data import WeightedRandomSampler, Subset
 
-from lightning_modules.kmer_module import KmerModule
-from utils.dataset import ToyDataset, TwoClassOverfitDataset, EnhancerDataset, KmerDataModule
+from lightning_modules.molecule_module import MoleculeModule
+from utils.dataset import ToyDataset, TwoClassOverfitDataset, EnhancerDataset, KmerDataModule, MoleculeDataModule
 from utils.parsing import parse_train_args
 args = parse_train_args()
 import torch, os, wandb
@@ -61,7 +61,14 @@ elif args.dataset_type == 'enhancer':
     toy_data = None
 
 if args.dataset_type == 'kmers':
+    print('kmer dataset')
     dm = KmerDataModule(batch_size=args.batch_size, k=1, version=1) # can incorporate args
+    train_loader = dm.train_dataloader()
+    val_loader = dm.val_dataloader() if not args.validate_on_test else dm.test_dataloader()
+    toy_data = None
+if args.dataset_type == 'selfies':
+    print('selfies dataset')
+    dm = MoleculeDataModule(batch_size=args.batch_size, k=1, version=1) # can incorporate args
     train_loader = dm.train_dataloader()
     val_loader = dm.val_dataloader() if not args.validate_on_test else dm.test_dataloader()
     toy_data = None
@@ -81,7 +88,13 @@ else:
         train_loader = torch.utils.data.DataLoader(train_ds, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=args.dataset_type == 'enhancer')
     val_loader = torch.utils.data.DataLoader(val_ds, batch_size=args.batch_size, num_workers=args.num_workers)
 
-model = KmerModule(args, dm.train.vocab_size, toy_data)
+model = MoleculeModule(args, dm.full_dataset.alphabet_size, toy_data)
+
+# for batch in train_loader:
+#     import ipdb; ipdb.set_trace()
+
+#     print('first batch')
+#     break
 
 if args.validate:
     trainer.validate(model, train_loader if args.validate_on_train else val_loader, ckpt_path=args.ckpt)

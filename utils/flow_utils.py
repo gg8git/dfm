@@ -131,13 +131,14 @@ class DirichletConditionalFlow:
         self.K = K
 
     def c_factor(self, bs, alpha):
+        bs = np.clip(bs, 1e-10, 1 - 1e-10)
         out1 = scipy.special.beta(alpha, self.K - 1)
-        out2 = np.where(bs < 1, out1 / ((1 - bs) ** (self.K - 1)), 0)
+        out2 = np.where(bs < 1, out1 / np.clip((1 - bs) ** (self.K - 1), 1e-10, 1 - 1e-10), 0)
         # out = np.where((bs ** (alpha - 1)) > 0, out2 / (bs ** (alpha - 1)), 0)
         mask = (bs ** (alpha - 1)) > 0
         out = np.zeros_like(out2)
-        out[mask] = (out2[mask]) / ((bs ** (alpha - 1))[mask])
-        I_func = self.beta_cdfs_derivative[np.argmin(np.abs(alpha - self.alphas))]
+        out[mask] = (out2[mask]) / (np.clip(bs ** (alpha - 1), 1e-10, 1 - 1e-10)[mask])
+        I_func = self.beta_cdfs_derivative[max(np.argmin(np.abs(alpha - self.alphas)) - 1, 0)]
         interp = -np.interp(bs, self.bs, I_func)
         final = interp * out
         return final

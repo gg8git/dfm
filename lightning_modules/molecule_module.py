@@ -25,7 +25,7 @@ from utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-class KmerModule(GeneralModule):
+class MoleculeModule(GeneralModule):
     def __init__(self, args, alphabet_size, toy_data):
         super().__init__(args)
         self.load_model(alphabet_size, None)
@@ -64,7 +64,7 @@ class KmerModule(GeneralModule):
 
     def general_step(self, batch, batch_idx=None):
         self.iter_step += 1
-        seq, _ = batch
+        seq = batch
         B, L = seq.shape
         if seq.min().item() < 0 or seq.max().item() > self.model.alphabet_size:
             import ipdb; ipdb.set_trace()
