@@ -51,7 +51,7 @@ def parse_train_args():
     parser.add_argument("--taskiran_seq_path", type=str, default=None)
 
     # Data
-    parser.add_argument('--dataset_type', type=str, choices=['enhancer', 'toy_fixed','toy_sampled', 'kmers', 'selfies'], default='argmax')
+    parser.add_argument('--dataset_type', type=str, choices=['enhancer', 'toy_fixed','toy_sampled', 'kmers', 'selfies', 'molecule'], default='argmax')
     parser.add_argument("--mel_enhancer", action='store_true')
     parser.add_argument("--overfit", action='store_true')
     parser.add_argument("--promoter_dataset", action='store_true')

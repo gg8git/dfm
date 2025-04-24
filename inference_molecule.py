@@ -91,11 +91,11 @@ else:
         train_loader = torch.utils.data.DataLoader(train_ds, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=args.dataset_type == 'enhancer')
     val_loader = torch.utils.data.DataLoader(val_ds, batch_size=args.batch_size, num_workers=args.num_workers)
 
-# checkpoint_path = os.path.join("workdir", "train_molecule_dfm_final_1_2025-04-22_20-05-10/epoch=59-step=147960.ckpt")
-# model = MoleculeModule.load_from_checkpoint(checkpoint_path)
-# torch.save(model.state_dict(), "../NFBO/model_weight/dfm_model.pt")
-model = MoleculeModule() 
-model.load_state_dict(torch.load("../NFBO/model_weight/dfm_model.pt"))
+checkpoint_path = os.path.join("workdir", "train_molecule_dfm_final_2_2025-04-24_07-15-18/epoch=89-step=221940.ckpt")
+model = MoleculeModule.load_from_checkpoint(checkpoint_path)
+torch.save(model.state_dict(), "../NFBO/model_weight/dfm_model.pt")
+# model = MoleculeModule() 
+# model.load_state_dict(torch.load("../NFBO/model_weight/dfm_model.pt"))
 model.eval()
 import ipdb; ipdb.set_trace()
 
@@ -213,8 +213,6 @@ for seqs in train_loader:
         # target_logits
         target_logits = torch.nn.functional.one_hot(seq, num_classes=K).float().to(device)
         perturbed_logits = torch.distributions.Dirichlet(target_logits * 100 + 1e-1).sample()
-
-        import ipdb; ipdb.set_trace()
         
         # encoding
         encode_traj = torchdiffeq.odeint(

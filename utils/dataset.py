@@ -340,3 +340,279 @@ class MoleculeDataset(torch.utils.data.Dataset):
         indices += [self.token_to_idx[self.stop_token]] * (self.max_length - len(indices))
         
         return torch.tensor(indices)
+
+import numpy as np
+import selfies as sf
+import torch
+import torch.nn.functional as F
+
+class SELFIESDataModule(pl.LightningDataModule):
+    def __init__(self, batch_size): 
+        super().__init__() 
+        self.batch_size = batch_size 
+
+        self.dataset = SELFIESDataset(fname='../cfm/data/guacamol_v1_train.selfies')
+        print('VOCAB SIZE', self.dataset.vocab_size)
+        val_size = min(10000, len(self.dataset) // 10)  
+        train_size = len(self.dataset) - val_size
+        train_dataset, val_dataset = torch.utils.data.random_split(self.dataset, [train_size, val_size])
+        
+        self.train  = train_dataset
+        self.val    = val_dataset
+        self.test   = val_dataset
+    
+    def train_dataloader(self):
+        return torch.utils.data.DataLoader(self.train, batch_size=self.batch_size, pin_memory=True, shuffle=True, collate_fn=collate_fn, num_workers=10, drop_last=True)
+
+    def val_dataloader(self):
+        return torch.utils.data.DataLoader(self.val,   batch_size=self.batch_size, pin_memory=True, shuffle=False, collate_fn=collate_fn, num_workers=10, drop_last=True)
+    
+    def test_dataloader(self):
+        return torch.utils.data.DataLoader(self.test,   batch_size=self.batch_size, pin_memory=True, shuffle=False, collate_fn=collate_fn, num_workers=10, drop_last=True)
+
+
+# DEFAULT_SELFIES_VOCAB = ['<start>', '<stop>',] + list(sf.ge1t_semantic_robust_alphabet()) + ["[NH1]","[NH1+1]", "[Cl+1]", "[Si]", "[PH1]", "[Se]"]
+
+class SELFIESDataset(torch.utils.data.Dataset):
+    def __init__(
+        self,
+        fname=None,
+    ):
+        self.data = []
+        assert fname is not None
+        with open(fname, 'r') as f:
+            selfie_strings = [line.strip() for line in f]
+        for string in selfie_strings:
+            self.data.append(list(sf.split_selfies(string)))
+        self.vocab = set(token for selfie in self.data for token in selfie)
+        self.vocab.discard(".")
+        self.vocab = ["<start>", "<stop>", *sorted(list(self.vocab))]
+            
+        DEFAULT_SELFIES_VOCAB = [
+            "<start>",
+            "<stop>",
+            "[#Branch1]",
+            "[#Branch2]",
+            "[#C-1]",
+            "[#C]",
+            "[#N+1]",
+            "[#N]",
+            "[#O+1]",
+            "[=B]",
+            "[=Branch1]",
+            "[=Branch2]",
+            "[=C-1]",
+            "[=C]",
+            "[=N+1]",
+            "[=N-1]",
+            "[=NH1+1]",
+            "[=NH2+1]",
+            "[=N]",
+            "[=O+1]",
+            "[=OH1+1]",
+            "[=O]",
+            "[=PH1]",
+            "[=P]",
+            "[=Ring1]",
+            "[=Ring2]",
+            "[=S+1]",
+            "[=SH1]",
+            "[=S]",
+            "[=Se+1]",
+            "[=Se]",
+            "[=Si]",
+            "[B-1]",
+            "[BH0]",
+            "[BH1-1]",
+            "[BH2-1]",
+            "[BH3-1]",
+            "[B]",
+            "[Br+2]",
+            "[Br-1]",
+            "[Br]",
+            "[Branch1]",
+            "[Branch2]",
+            "[C+1]",
+            "[C-1]",
+            "[CH1+1]",
+            "[CH1-1]",
+            "[CH1]",
+            "[CH2+1]",
+            "[CH2]",
+            "[C]",
+            "[Cl+1]",
+            "[Cl+2]",
+            "[Cl+3]",
+            "[Cl-1]",
+            "[Cl]",
+            "[F+1]",
+            "[F-1]",
+            "[F]",
+            "[H]",
+            "[I+1]",
+            "[I+2]",
+            "[I+3]",
+            "[I]",
+            "[N+1]",
+            "[N-1]",
+            "[NH0]",
+            "[NH1+1]",
+            "[NH1-1]",
+            "[NH1]",
+            "[NH2+1]",
+            "[NH3+1]",
+            "[N]",
+            "[O+1]",
+            "[O-1]",
+            "[OH0]",
+            "[O]",
+            "[P+1]",
+            "[PH1]",
+            "[PH2+1]",
+            "[P]",
+            "[Ring1]",
+            "[Ring2]",
+            "[S+1]",
+            "[S-1]",
+            "[SH1]",
+            "[S]",
+            "[Se+1]",
+            "[Se-1]",
+            "[SeH1]",
+            "[SeH2]",
+            "[Se]",
+            "[Si-1]",
+            "[SiH1-1]",
+            "[SiH1]",
+            "[SiH2]",
+            "[Si]",
+            "[=Cl-1]",
+            "[OH1+1]",
+            "[=Br-1]",
+            "[#Br-1]",
+            "[=OH0]",
+            "[=SiH1]",
+            "[=I+2]",
+            "[=CH1]",
+            "[=SeH2]",
+            "[=BH2-1]",
+            "[=SiH2]",
+            "[#PH1]",
+            "[=Br+2]",
+            "[=F+1]",
+            "[=NH1]",
+            "[=Cl+3]",
+            "[=SiH2]",
+            "[#SeH2]",
+            "[=I+3]",
+            "[=Se-1]",
+            "[#Se]",
+            "[#Se+1]",
+            "[#NH0]",
+            "[#SiH2]",
+            "[=NH0]",
+            "[=SeH1]",
+            "[#I+2]",
+            "[#CH1]",
+            "[#Cl+2]",
+            "[#Cl+1]",
+            "[#F+1]",
+            "[=SiH1-1]",
+            "[=Si-1]",
+            "[=PH2+1]",
+            "[#Ring1]",
+            "[=Cl+1]",
+            "[#SiH1-1]",
+            "[=CH2+1]",
+            "[#Se-1]",
+            "[#PH2+1]",
+            "[#Si]",
+            "[=Cl+2]",
+            "[#I+3]",
+            "[#NH1+1]",
+            "[#Br+2]",
+            "[#SeH1]",
+            "[=BH0]",
+            "[=CH1+1]",
+            "[=I+1]",
+            "[#CH1+1]",
+            "[=CH2]",
+            "[#BH0]",
+            "[#CH2+1]",
+            "[#I+1]",
+            "[=CH2]",
+            "[#SiH1]",
+            "[#Cl-1]",
+            "[=CH1-1]",
+            "[=BH1-1]",
+            "[=F-1]",
+            "[#Si-1]",
+            "[#F-1]",
+            "[#BH1-1]",
+            "[#Cl+3]",
+            "[#Ring2]",
+        ]
+
+        DEFAULT_SELFIES_VOCAB = (
+            DEFAULT_SELFIES_VOCAB
+            + list(sf.get_semantic_robust_alphabet() - set(DEFAULT_SELFIES_VOCAB))
+            + [
+                "[#SH1]",
+            ]
+        )
+
+        self.vocab = DEFAULT_SELFIES_VOCAB
+
+        self.vocab2idx = {v: i for i, v in enumerate(self.vocab)}
+        self.idx2vocab = dict(zip(range(len(self.vocab)), self.vocab))
+
+    def tokenize_selfies(self, selfies_list):
+        tokenized_selfies = []
+        for string in selfies_list:
+            tokenized_selfies.append(list(sf.split_selfies(string)))
+        return tokenized_selfies
+
+    def encode(self, smiles, maxl=None):
+        if type(smiles[0]) == list:
+            maxl = max([len(x) for x in smiles] + ([0] if maxl == None else [maxl]))
+
+            smiles_pad = [x + ["<stop>"] * (maxl - len(x)) for x in smiles]
+            return torch.tensor(np.vectorize(self.vocab2idx.get)(np.array(smiles_pad)))
+        else:
+            return torch.tensor([self.vocab2idx[s] for s in [*smiles, "<stop>"]])
+
+    def decode(self, tokens):
+        if tokens.dim() == 2:
+            dec = np.vectorize(self.idx2vocab.get)(tokens.cpu())
+            dec[torch.tensor(dec == "<stop>").cummax(dim=-1).values] = ""
+            return ["".join(x) for x in dec]
+        else:
+            dec = [self.vocab[t] for t in tokens]  # type: ignore
+            # Chop out start token and everything past (and including) first stop token
+            stop = dec.index("<stop>") if "<stop>" in dec else None  # want first stop token
+            selfie = dec[0:stop]  # cut off stop tokens
+            while (
+                "<start>" in selfie
+            ):  # start at last start token (I've seen one case where it started w/ 2 start tokens)
+                start = 1 + dec.index("<start>")
+                selfie = selfie[start:]
+            selfie = "".join(selfie)
+            return selfie
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.encode(self.data[idx])
+
+    @property
+    def vocab_size(self):
+        return len(self.vocab)
+
+def collate_fn(data):
+    # Length of longest molecule in batch
+    max_size = max(max([x.shape[-1] for x in data]), 128)
+    return torch.vstack(
+        # Pad with stop token
+        [F.pad(x, (0, max_size - x.shape[-1]), value=1) for x in data]
+    )
